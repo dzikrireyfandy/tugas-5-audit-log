@@ -10,6 +10,7 @@ import StallFormPage from './pages/StallFormPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ProfilePage from './pages/ProfilePage'
+import AuditLogPage from './pages/AuditLogPage'
 import { ForbiddenPage, NotFoundPage } from './pages/StatusPages'
 
 function Layout() {
@@ -64,6 +65,11 @@ export default function App() {
               <Route element={<ProtectedRoute roles={['admin', 'owner']} />}>
                 <Route path="stalls/new" element={<StallFormPage />} />
                 <Route path="stalls/:id/edit" element={<StallFormPage />} />
+              </Route>
+
+              <Route element={<ProtectedRoute roles={['admin']} />}>
+                <Route path="admin/audit-logs" element={<AuditLogPage />} />
+                <Route path="audit-logs" element={<AuditLogPage />} />
               </Route>
 
               <Route path="*" element={<NotFoundPage />} />

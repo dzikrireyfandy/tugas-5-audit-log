@@ -36,6 +36,16 @@ async function buildDb() {
   return drizzle({ client: pool });
 }
 
+export async function getPool(): Promise<mssql.ConnectionPool> {
+  if (!poolPromise) {
+    poolPromise = mssql.connect(config).catch((error) => {
+      poolPromise = null;
+      throw error;
+    });
+  }
+  return poolPromise;
+}
+
 // Satu instance Drizzle dipakai ulang untuk seluruh aplikasi 
 export function getDb() {
   if (!dbPromise) {

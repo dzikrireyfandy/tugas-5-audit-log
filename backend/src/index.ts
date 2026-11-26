@@ -4,6 +4,7 @@ import swaggerUi from 'swagger-ui-express';
 import { getDb } from './db/index.ts';
 import { authRouter } from './routes/authRouter.ts';
 import { stallRouter } from './routes/stallRouter.ts';
+import { auditLogRouter } from './routes/auditLogRouter.ts';
 import { notFoundHandler } from './middlewares/notFound.ts';
 import { errorHandler } from './middlewares/errorHandler.ts';
 import { openApiDocument } from './docs/openapi.ts';
@@ -53,9 +54,17 @@ app.use('/auth', authRouter);
 app.use('/api/v1/stalls', stallRouter);
 app.use('/stalls', stallRouter);
 
+app.use('/api/audit-logs', auditLogRouter);
+app.use('/api/v1/audit-logs', auditLogRouter);
+app.use('/audit-logs', auditLogRouter);
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server berjalan di http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Server berjalan di http://localhost:${PORT}`);
+  });
+}
+
+export { app };

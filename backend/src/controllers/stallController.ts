@@ -60,9 +60,10 @@ export class StallController {
     res.status(200).json({ status: 'success', data: stall });
   };
 
-  deleteStall = async (_req: Request, res: Response): Promise<void> => {
+  deleteStall = async (req: Request, res: Response): Promise<void> => {
     const { id } = getValidated<IdParam>(res, 'params');
-    const stall = await this.stallService.deleteStall(id);
+    const user = getUser(req);
+    const stall = await this.stallService.deleteStall(id, user.id);
     res.status(200).json({ status: 'success', data: stall });
   };
 }

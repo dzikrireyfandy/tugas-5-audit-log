@@ -1,134 +1,164 @@
-# Frontend React & Integrasi Backend
+# Tugas 5 - Validasi, Error Handling & Audit Log
 
-Aplikasi review warung kantin kampus. Frontend React berkomunikasi dengan backend Express.js (Tugas 2 dan 3) lewat **Axios**.
-Fitur: daftar & detail warung, CRUD warung berdasarkan role, registrasi, login (JWT), informasi pengguna, serta state loading, kosong, dan error.
+Aplikasi Sistem Review Kantin kampus yang dilengkapi dengan sistem Audit Log. Backend dibangun dengan Express.js dan Microsoft SQL Server, sedangkan frontend dibangun dengan React dan TypeScript melalui Axios.
 
+Fitur utama Tugas 5 meliputi pencatatan audit autentikasi (LOGIN dan LOGOUT beserta `ip_address`, `user_agent`, dan `result`), endpoint riwayat serta detail audit khusus admin dengan filter dan pagination database, proteksi tabel `AUDIT_LOGS` bersifat append-only menggunakan trigger SQL Server, halaman riwayat dan modal detail di frontend, serta fitur bonus pencatatan audit atomik untuk tabel `STALLS` dan `REVIEWS`.
 
 ## Teknologi
 
 | Bagian | Teknologi |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router, lucide-react |
-| Komunikasi HTTP | **Axios** (satu instance bersama, request + response interceptor) |
-| Backend | Node.js, Express 5, TypeScript (tsx), Drizzle ORM, Zod, JWT, bcryptjs, Swagger UI |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router, Axios, lucide-react |
+| Backend | Node.js, Express 5, TypeScript (tsx), mssql, Drizzle ORM, Zod, JWT, bcryptjs, Swagger UI |
 | Database | Microsoft SQL Server |
 
-## Struktur
+## Struktur Proyek
 
-```
+```text
 .
-├─ backend/    # API Express (Tugas 2 + 3), SQL ada di backend/sql
-└─ frontend/   # React + Vite
-   └─ src/
-      ├─ lib/         # http.ts (Axios + interceptor), api.ts (endpoint), errors.ts, permissions.ts
-      ├─ context/     # AuthContext (sesi JWT), ToastContext
-      ├─ components/  # Header, StallCard, StallForm, ProtectedRoute, ConfirmDialog, ui
-      └─ pages/       # daftar, detail, form tambah/ubah, login, register, profil, 403/404
+|-- backend/
+|   |-- sql/
+|   |   |-- 00-setup-mixed-mode.sql
+|   |   |-- 01-create-database-and-user.sql
+|   |   |-- 02-schema.sql
+|   |   |-- 03-seed.sql
+|   |   `-- 04-audit-log-append-only.sql   # Index performa dan trigger append-only AUDIT_LOGS
+|   |-- src/
+|   |   |-- controllers/                   # authController, stallController, reviewController, auditLogController
+|   |   |-- db/                            # index.ts (pool + Drizzle), request.ts, transaction.ts
+|   |   |-- dtos/                          # auditLogDto, authDto, stallDto, reviewDto
+|   |   |-- errors/                        # AppError, ValidationError, UnauthorizedError, ForbiddenError, NotFoundError
+|   |   |-- middlewares/                   # auth, authorize, validate, errorHandler, notFound
+|   |   |-- repositories/                  # auditLogRepository, stallRepository, reviewRepository, userRepository
+|   |   |-- routes/                        # authRouter, stallRouter, auditLogRouter
+|   |   |-- schemas/                       # auditLogSchema, authSchema, stallSchema, reviewSchema
+|   |   `-- services/                      # auditLogService, authService, stallService, reviewService
+|   |-- .env.example
+|   `-- test-e2e.ts                        # Pengujian otomatis endpoint, filter, RBAC, trigger, dan bonus
+`-- frontend/
+    |-- src/
+    |   |-- components/                    # Header, ProtectedRoute, StallCard, StallForm, ConfirmDialog, ui
+    |   |-- context/                       # AuthContext, ToastContext
+    |   |-- lib/                           # http.ts, api.ts, audit.ts, errors.ts, format.ts, permissions.ts
+    |   |-- pages/                         # AuditLogPage, StallListPage, StallDetailPage, StallFormPage, LoginPage, RegisterPage, ProfilePage, StatusPages
+    |   `-- types/                         # api.ts, auditLog.ts
+    `-- .env.example
 ```
 
 ## Prasyarat
 
-- Node.js 22.18 atau lebih baru
-- SQL Server aktif dengan database `review_kantin` (jalankan skrip di `backend/sql` berurutan: `00` sampai `03`)
-- Port 3000 (backend) dan 5173 (frontend) kosong
+- Node.js 22 atau lebih baru
+- Microsoft SQL Server aktif dengan database `review_kantin`
+- Port `3000` (backend) dan `5173` (frontend) tersedia
 
-## Instalasi dan menjalankan
+## Instalasi dan Menjalankan
 
-### 1. Backend
+### 1. Database SQL Server
+
+Jalankan skrip SQL di folder `backend/sql/` secara berurutan di SSMS menggunakan akun dengan hak DDL (misalnya Windows Authentication / sysadmin):
+
+1. `00-setup-mixed-mode.sql` (jika belum)
+2. `01-create-database-and-user.sql` (jika belum)
+3. `02-schema.sql` (jika belum)
+4. `03-seed.sql` (jika belum)
+5. `04-audit-log-append-only.sql` (membuat index audit dan trigger `TR_AUDIT_LOGS_AppendOnly`)
+
+### 2. Backend
 
 ```bash
 cd backend
 npm install
-cp .env.example .env     # lalu isi DB_USER, DB_PASSWORD, JWT_SECRET, dst.
+cp .env.example .env
+# Isi kredensial database dan JWT_SECRET pada file .env
 npm run dev
 ```
 
-Backend berjalan di `http://localhost:3000`, dokumentasi Swagger di `http://localhost:3000/docs`.
+Backend berjalan di `http://localhost:3000` dan dokumentasi Swagger di `http://localhost:3000/docs`.
 
-### 2. Frontend
+### 3. Frontend
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env     # VITE_API_BASE_URL=http://localhost:3000
+cp .env.example .env
 npm run dev
 ```
 
-Buka `http://localhost:5173`.
+Frontend berjalan di `http://localhost:5173`.
 
-## Konfigurasi environment
+## Konfigurasi Environment
 
-**backend/.env** 
-
-| Variabel | Keterangan |
-| --- | --- |
-| `PORT` | Port server (default 3000) |
-| `CORS_ORIGIN` | Origin frontend yang diizinkan, default `http://localhost:5173` 
-| `DB_SERVER`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Koneksi SQL Server |
-| `DB_ENCRYPT`, `DB_TRUST_SERVER_CERTIFICATE` | Opsi koneksi SQL Server |
-| `JWT_SECRET`, `JWT_EXPIRES_IN` | Rahasia dan masa berlaku token |
-| `BCRYPT_SALT_ROUNDS` | Jumlah salt round bcrypt |
-
-**frontend/.env**
+### backend/.env.example
 
 | Variabel | Keterangan |
 | --- | --- |
-| `VITE_API_BASE_URL` | Alamat backend tanpa `/` di akhir, default `http://localhost:3000` |
+| `PORT` | Port server Express (default `3000`) |
+| `CORS_ORIGIN` | Origin frontend yang diizinkan (default `http://localhost:5173`) |
+| `DB_SERVER`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Koneksi database SQL Server |
+| `DB_ENCRYPT`, `DB_TRUST_SERVER_CERTIFICATE` | Opsi enkripsi koneksi SQL Server |
+| `JWT_SECRET`, `JWT_EXPIRES_IN` | Secret key dan masa berlaku JWT |
+| `BCRYPT_SALT_ROUNDS` | Jumlah salt round untuk hashing password |
 
-## Akun uji (seed)
+### frontend/.env.example
 
-Semua akun seed memakai password yang sama dengan yang dipakai saat menyiapkan `03-seed.sql` pada Tugas 3.
-
-| Role | Email |
+| Variabel | Keterangan |
 | --- | --- |
-| Admin | `admin@kantin.test` |
-| Owner | `budi.owner@kantin.test` (pemilik warung 1, 2, 5, 9), `siti.owner@kantin.test`, `joko.owner@kantin.test` |
-| Customer | `andi@kantin.test`, `rani@kantin.test` |
+| `VITE_API_BASE_URL` | URL dasar API backend tanpa `/` di akhir (default `http://localhost:3000`) |
 
-Registrasi lewat aplikasi selalu membuat akun berperan **customer**.
+## Akun Uji (Seed)
 
-## Endpoint yang dipakai frontend
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `admin@kantin.test` | `admin123` |
+| Owner | `budi.owner@kantin.test` | `rahasia123` |
+| Customer | `andi@kantin.test` | `rahasia123` |
 
-| Fitur | Endpoint |
-| --- | --- |
-| Daftar warung (search, filter, pagination) | `GET /stalls?search=&category=&page=&limit=` |
-| Detail warung | `GET /stalls/:id` dan `GET /stalls/:id/menus` |
-| Tambah warung | `POST /stalls` (owner, admin) |
-| Ubah warung | `PUT /stalls/:id` (admin, atau owner pemilik warung) |
-| Hapus warung | `DELETE /stalls/:id` (admin) |
-| Registrasi | `POST /auth/register` |
-| Login | `POST /auth/login` (mengembalikan JWT di body) |
-| Info pengguna | `GET /auth/me` |
-| Logout | Tidak ada endpoint; token Bearer dihapus dari client |
+## Endpoint Utama
 
-## Cara kerja autentikasi dan role
+| Method | Path | Akses | Fungsi |
+| --- | --- | --- | --- |
+| `POST` | `/auth/register` | Publik | Registrasi pengguna baru (role `customer`) |
+| `POST` | `/auth/login` | Publik | Login, mengembalikan JWT, dan mencatat audit `LOGIN` (`ip_address`, `user_agent`, `role`, `result`) |
+| `POST` | `/auth/logout` | Terautentikasi | Logout dan mencatat audit `LOGOUT` secara best-effort |
+| `GET` | `/auth/me` | Terautentikasi | Informasi pengguna yang sedang login |
+| `GET` | `/stalls` | Publik | Daftar warung dengan pencarian, filter, dan pagination |
+| `GET` | `/stalls/:id` | Publik | Detail warung |
+| `POST` | `/stalls` | Owner, Admin | Tambah warung dan mencatat audit `CREATE_STALL` dalam satu transaksi |
+| `PUT` | `/stalls/:id` | Owner (milik sendiri), Admin | Ubah warung dan mencatat audit `UPDATE_STALL` (`before`, `after`, `changed`) dalam satu transaksi |
+| `DELETE` | `/stalls/:id` | Admin | Hapus warung dan mencatat audit `DELETE_STALL` (`before`) dalam satu transaksi |
+| `POST` | `/stalls/:id/reviews` | Terautentikasi | Tambah review warung dan mencatat audit `CREATE_REVIEW` dalam satu transaksi |
+| `GET` | `/api/audit-logs` | Admin | Daftar riwayat audit log dengan filter dan pagination database |
+| `GET` | `/api/audit-logs/:id` | Admin | Detail satu catatan audit log (mengembalikan `404` jika tidak ditemukan) |
 
-- Login mengembalikan JWT. Token disimpan di `localStorage`, lalu dipasang otomatis sebagai header `Authorization: Bearer <token>` oleh request interceptor Axios.
-- Saat aplikasi dibuka, token yang tersimpan divalidasi lewat `GET /auth/me` untuk memulihkan sesi.
-- Response interceptor menangkap **401** pada endpoint selain login/register: token dihapus dan pengguna diarahkan ke halaman login dengan pesan sesi berakhir.
-- Respons **403** dari backend ditampilkan sebagai pesan "Akses ditolak" di form atau notifikasi.
-- Tampilan mengikuti role (aturan di `frontend/src/lib/permissions.ts`), tetapi keputusan akhir selalu di backend:
-  - Public: lihat daftar dan detail, registrasi, login
-  - Customer: sama seperti Public, tanpa tombol pengelolaan
-  - Owner: tambah warung; tombol Ubah hanya pada warung miliknya
-  - Admin: tambah, ubah, dan hapus semua warung
-- Rute `/stalls/new` dan `/stalls/:id/edit` hanya untuk admin dan owner. Pengguna belum login diarahkan ke `/login`, customer diarahkan ke `/forbidden`.
+### Parameter Query `GET /api/audit-logs`
 
-## Perubahan pada backend 
-- Menambah middleware CORS di `backend/src/index.ts` (dibaca dari `CORS_ORIGIN`) agar browser boleh memanggil API dari `localhost:5173`.
-- Merapikan import tipe di `stallService.ts` supaya `tsc --noEmit` bersih untuk jalur yang dipakai.
+| Parameter | Tipe | Default | Aturan |
+| --- | --- | --- | --- |
+| `page` | integer | `1` | Minimal `1`. Nilai `0` atau negatif ditolak `400` |
+| `pageSize` | integer | `20` | Antara `1` sampai `100`. Di luar rentang ditolak `400` |
+| `action` | string | tanpa filter | Maksimal 50 karakter, cocok persis |
+| `targetTable` | string | tanpa filter | Maksimal 50 karakter, cocok persis |
+| `targetId` | integer | tanpa filter | Bilangan bulat positif |
+| `userId` | integer | tanpa filter | Bilangan bulat positif |
+| `from` | tanggal | tanpa filter | Format `YYYY-MM-DD`, tanggal valid kalender, inklusif awal hari |
+| `to` | tanggal | tanpa filter | Format `YYYY-MM-DD`, tanggal valid kalender, inklusif akhir hari |
 
-## Skenario pengujian manual
+Ketentuan validasi tambahan:
+- Semua filter digabung dengan logika `AND`.
+- Jika `from` lebih besar dari `to`, backend mengembalikan `400`.
+- Parameter yang tidak dikenal ditolak dengan `400` (skema Zod `.strict()`).
+- Hasil diurutkan berdasarkan `created_at DESC, id DESC`.
+- `userName` dan `userEmail` diambil dari tabel `USERS` melalui `LEFT JOIN` saat data dibaca.
 
-1. Daftar warung tampil dari `GET /stalls`, termasuk pencarian, filter kategori, dan pagination.
-2. Detail warung tampil dari `GET /stalls/:id`; ID yang tidak ada menampilkan pesan tidak ditemukan.
-3. Admin: tambah, ubah, dan hapus warung berhasil.
-4. Owner: membuat warung dan mengubah warung miliknya.
-5. Owner mengubah warung owner lain: backend menolak dengan 403, pesan tampil di form.
-6. Owner menghapus warung: ditolak 403 (hanya admin). Tombol Hapus disembunyikan di UI; buktikan lewat Swagger `/docs`.
-7. Registrasi dan login berhasil.
-8. `GET /auth/me` tampil di halaman Profil.
-9. Pengguna belum login yang membuka halaman terlindungi diarahkan ke login.
-10. 401 dan 403 ditangani sesuai kondisi.
-11. Loading, empty state, dan error state (matikan backend lalu muat ulang).
-12. Setelah tambah, ubah, atau hapus, cek tabel `STALLS` di SQL Server untuk memastikan perubahan tersimpan di database.
+## Proteksi Append-Only Database
+
+Tabel `dbo.AUDIT_LOGS` dilindungi oleh trigger `TR_AUDIT_LOGS_AppendOnly` (`INSTEAD OF UPDATE, DELETE`) yang menolak seluruh operasi `UPDATE` dan `DELETE` dengan error `50010: AUDIT_LOGS bersifat append-only.`. Aplikasi juga tidak menyediakan endpoint untuk mengubah atau menghapus audit log.
+
+## Pengujian Otomatis
+
+Untuk menjalankan pengujian otomatis terhadap autentikasi (`LOGIN`/`LOGOUT`), RBAC (`401`/`403`/`200`), filter query, validasi (`400`), detail (`200`/`404`), trigger append-only, serta bonus audit `STALLS` dan `REVIEWS`:
+
+```bash
+cd backend
+npm run test:e2e
+```

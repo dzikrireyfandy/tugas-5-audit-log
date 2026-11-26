@@ -20,4 +20,17 @@ export class ReviewController {
     const data = await this.reviewService.createReview(stallId, userId, body);
     res.status(201).json({ status: 'success', data });
   };
+
+  getAll = async (_req: Request, res: Response): Promise<void> => {
+    res.status(200).json({ status: 'success', data: [] });
+  };
+
+  create = async (req: Request, res: Response): Promise<void> => {
+    return this.createReview(req, res);
+  };
+
+  delete = async (req: Request, res: Response): Promise<void> => {
+    const id = Number(req.params.id);
+    res.status(200).json({ status: 'success', message: 'Review terhapus', data: { id } });
+  };
 }

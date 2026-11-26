@@ -34,6 +34,16 @@ export default function Header() {
           >
             Daftar Warung
           </NavLink>
+          {user?.role === 'admin' && (
+            <NavLink
+              to="/admin/audit-logs"
+              className={({ isActive }) =>
+                `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-sage text-pine' : 'text-muted hover:text-ink'}`
+              }
+            >
+              Audit Log
+            </NavLink>
+          )}
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
