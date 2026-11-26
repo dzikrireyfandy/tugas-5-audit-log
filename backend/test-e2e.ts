@@ -60,7 +60,7 @@ async function main() {
   const pool = await getPool();
 
   console.log('\n======================================================');
-  console.log('🧪 PENGUJIAN TUGAS 5: AUDIT LOG SYSTEM & BONUS');
+  console.log('PENGUJIAN TUGAS 5: AUDIT LOG SYSTEM & BONUS');
   console.log('======================================================\n');
 
   let adminToken = '';
@@ -266,7 +266,7 @@ async function main() {
   console.log('Audit Bonus Tercatat di Database (Top 4):', bonusAudits.recordset.slice(0, 4));
 
   console.log('\n======================================================');
-  console.log('✅ SELURUH PENGUJIAN SELESAI!');
+  console.log('SELURUH PENGUJIAN SELESAI');
   console.log('======================================================\n');
 
   await stopServer();
