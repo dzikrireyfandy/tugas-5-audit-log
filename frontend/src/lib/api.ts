@@ -11,12 +11,15 @@ import type {
   StallQuery,
   User,
 } from '../types/api'
+import type { AuditLog, AuditLogFilters, AuditLogList } from '../types/auditLog'
 
 export const authApi = {
   register: (input: RegisterInput) =>
     http.post<ApiResponse<{ user: User }>>('/auth/register', input).then((r) => r.data.data.user),
   login: (input: LoginInput) =>
     http.post<ApiResponse<LoginResult>>('/auth/login', input).then((r) => r.data.data),
+  logout: () =>
+    http.post<ApiResponse<{ message: string }>>('/auth/logout').then((r) => r.data),
   me: () => http.get<ApiResponse<User>>('/auth/me').then((r) => r.data.data),
 }
 
@@ -31,4 +34,11 @@ export const stallApi = {
   update: (id: number, input: StallInput) =>
     http.put<ApiResponse<Stall>>(`/stalls/${id}`, input).then((r) => r.data.data),
   remove: (id: number) => http.delete<ApiResponse<Stall>>(`/stalls/${id}`).then((r) => r.data.data),
+}
+
+export const auditLogApi = {
+  list: (params?: AuditLogFilters) =>
+    http.get<ApiResponse<AuditLogList>>('/api/audit-logs', { params }).then((r) => r.data.data),
+  get: (id: number) =>
+    http.get<ApiResponse<AuditLog>>(`/api/audit-logs/${id}`).then((r) => r.data.data),
 }

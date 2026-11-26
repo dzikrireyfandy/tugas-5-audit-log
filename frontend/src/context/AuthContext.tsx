@@ -63,10 +63,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user
   }, [])
 
-  // Backend memakai Bearer JWT tanpa endpoint logout, jadi logout = menghapus token di client.
-  const logout = useCallback(() => {
-    tokenStore.clear()
-    setUser(null)
+  // Mengirim permintaan logout ke backend untuk pencatatan audit, lalu membersihkan sesi client
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      /* kegagalan audit logout tidak boleh menggagalkan logout di client */
+    } finally {
+      tokenStore.clear()
+      setUser(null)
+    }
   }, [])
 
   const clearSessionExpired = useCallback(() => setSessionExpired(false), [])

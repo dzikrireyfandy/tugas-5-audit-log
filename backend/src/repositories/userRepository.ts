@@ -24,6 +24,11 @@ export class UserRepository {
     return rows[0];
   }
 
+  async findAll() {
+    const db = await getDb();
+    return db.select().from(users);
+  }
+
   async create(input: CreateUserInput) {
     const db = await getDb();
     const rows = await db

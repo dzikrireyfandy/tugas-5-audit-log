@@ -30,3 +30,15 @@ export const roleLabel: Record<string, string> = {
   owner: 'Owner',
   customer: 'Customer',
 }
+
+export function formatDateTime(iso: string | Date | null | undefined): string {
+  if (!iso) return '-'
+  const date = typeof iso === 'string' ? new Date(iso) : iso
+  if (Number.isNaN(date.getTime())) return String(iso)
+  return new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}
+
+export const formatDate = formatDateTime
